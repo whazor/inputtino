@@ -47,7 +47,7 @@ RUN --mount=type=cache,target=/cache/ccache \
     -G Ninja && \
     ninja -C $CMAKE_BUILD_DIR input-server && \
     # We have to copy out the built executables because this will only be available inside the buildkit cache
-    cp $CMAKE_BUILD_DIR/src/server/input-server /inputtino/input-server
+    cp $CMAKE_BUILD_DIR/input-server /inputtino/input-server
 
 
 
