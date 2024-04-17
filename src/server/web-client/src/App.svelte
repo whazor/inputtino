@@ -9,6 +9,7 @@
     import Mouse from "./lib/Mouse.svelte";
     import {Toolbar, ToolbarGroup, DarkMode, Toast} from 'flowbite-svelte';
     import {FireOutline} from "flowbite-svelte-icons";
+    import Keyboard from "./lib/Keyboard.svelte";
 </script>
 
 <main>
@@ -22,6 +23,10 @@
 
     {#if $selected_device?.type === "MOUSE"}
         <Mouse/>
+    {/if}
+
+    {#if $selected_device?.type === "KEYBOARD"}
+        <Keyboard/>
     {/if}
 
     <FetchRequest/>
