@@ -108,6 +108,58 @@ TEST_CASE_METHOD(HTTPServerFixture, "Test REST server", "[server]") {
     }
   }
 
+  { // Test keyboard
+    // Test POST /devices/add (keyboard)
+    auto res = client.Post("/api/v1.0/devices/add", json{{"type", "KEYBOARD"}}.dump(), "application/json");
+    REQUIRE(res);
+    REQUIRE(res->status == 200);
+    auto new_device = json::parse(res->body);
+    std::string device_id = new_device["device_id"];
+    REQUIRE_THAT(new_device["client_id"], Equals("127.0.0.1"));
+    REQUIRE(new_device["device_nodes"].size() == 1);
+    REQUIRE_THAT(new_device["type"], Equals("KEYBOARD"));
+    REQUIRE(!device_id.empty());
+    // Are the nodes actually created on the host?
+    for (auto node : new_device["device_nodes"]) {
+      REQUIRE(std::filesystem::exists(node));
+    }
+
+    // Test that GET /devices lists the new device
+    res = client.Get("/api/v1.0/devices");
+    REQUIRE(res);
+    REQUIRE(res->status == 200);
+    auto devices = json::parse(res->body);
+    REQUIRE(devices["devices"].size() == 1);
+    devices = devices["devices"][0];
+    REQUIRE_THAT((std::vector<std::string>)devices["device_nodes"],
+                 Equals((std::vector<std::string>)new_device["device_nodes"]));
+    REQUIRE_THAT(devices["client_id"], Equals(new_device["client_id"]));
+    REQUIRE_THAT(devices["type"], Equals(new_device["type"]));
+    REQUIRE(devices["device_id"] == new_device["device_id"]);
+
+    // Test that we can move the mouse
+    res = client.Post("/api/v1.0/devices/keyboard/" + device_id + "/press",
+                      json{{"key", 41}} // Pressing A
+                          .dump(),
+                      "application/json");
+    REQUIRE(res);
+    REQUIRE(res->status == 200);
+    // TODO: check with libinput that the keyboard pressed A
+
+    // Test that DELETE /devices/<device_id> removes the device
+    res = client.Delete("/api/v1.0/devices/" + device_id);
+    REQUIRE(res);
+    REQUIRE(res->status == 200);
+    res = client.Get("/api/v1.0/devices");
+    REQUIRE(json::parse(res->body)["devices"].empty());
+    // Are the nodes actually removed from the host?
+    // This might take a few millis since it's stopping the background thread
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    for (auto node : new_device["device_nodes"]) {
+      REQUIRE(!std::filesystem::exists(node));
+    }
+  }
+
   { // Test POST /devices/add without type
     auto res = client.Post("/api/v1.0/devices/add", "{}", "application/json");
     REQUIRE(res);

@@ -14,8 +14,7 @@ static void handle_error(httplib::Response &res, const std::string &message) {
 }
 
 template <typename T>
-static bool
-handle_device(inputtino::Result<T> &result, httplib::Response &response, LocalDevice &device) {
+static bool handle_device(inputtino::Result<T> &result, httplib::Response &response, LocalDevice &device) {
   if (!result) {
     handle_error(response, result.getErrorMessage());
     return false;
@@ -188,6 +187,25 @@ std::unique_ptr<httplib::Server> setup_rest_server(std::shared_ptr<immer::atom<S
       mouse->horizontal_scroll(payload.value("distance", 0.0));
       break;
     }
+    res.set_content(json{{"success", true}}.dump(), "application/json");
+  });
+
+  /* Keyboard handlers */
+  svr->Post("/api/v1.0/devices/keyboard/:id/press", [state](const httplib::Request &req, httplib::Response &res) {
+    std::size_t id = std::stoul(req.path_params.at("id"));
+    auto payload = json::parse(req.body);
+    auto device = state->load()->devices.at(id);
+    auto keyboard = std::get<std::shared_ptr<inputtino::Keyboard>>(device->device);
+    keyboard->press(payload.at("key"));
+    res.set_content(json{{"success", true}}.dump(), "application/json");
+  });
+
+  svr->Post("/api/v1.0/devices/keyboard/:id/release", [state](const httplib::Request &req, httplib::Response &res) {
+    std::size_t id = std::stoul(req.path_params.at("id"));
+    auto payload = json::parse(req.body);
+    auto device = state->load()->devices.at(id);
+    auto keyboard = std::get<std::shared_ptr<inputtino::Keyboard>>(device->device);
+    keyboard->release(payload.at("key"));
     res.set_content(json{{"success", true}}.dump(), "application/json");
   });
 
