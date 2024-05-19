@@ -20,6 +20,7 @@ struct PS5JoypadState {
   unsigned char mac_address[6] = {
       0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF
   };
+  uint16_t vendor_id;
 
   uhid::dualsense_input_report_usb current_state;
   uint8_t touch_points_ids[2] = {0};

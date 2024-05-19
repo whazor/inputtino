@@ -181,13 +181,17 @@ TEST_CASE("C Switch API", "[C-API]") {
 TEST_CASE("C PS5 API", "[C-API]") {
   InputtinoErrorHandler error_handler = {.eh = [](const char *message, void *_data) { FAIL(message); },
                                          .user_data = nullptr};
-  InputtinoDeviceDefinition def = {};
+  InputtinoDeviceDefinition def = {.name = "Wolf DualSense (virtual) pad",
+                                   .vendor_id = 0x054C,
+                                   .product_id = 0x0CE6,
+                                   .version = 0x8111};
   auto ps_pad = inputtino_joypad_ps5_create(&def, &error_handler);
   REQUIRE(ps_pad != nullptr);
 
   int num_nodes = 0;
   auto nodes = inputtino_joypad_ps5_get_nodes(ps_pad, &num_nodes);
-  REQUIRE(num_nodes == 0); // TODO: implement this!
+  REQUIRE(num_nodes == 5);
+  REQUIRE_THAT(std::string(nodes[0]), Catch::Matchers::StartsWith("/dev/input/"));
 
   { // TODO: test that this actually work
     inputtino_joypad_ps5_set_pressed_buttons(ps_pad, INPUTTINO_JOYPAD_BTN::A | INPUTTINO_JOYPAD_BTN::B);

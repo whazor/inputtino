@@ -428,6 +428,6 @@ protected:
   std::shared_ptr<PS5JoypadState> _state;
 
 private:
-  PS5Joypad();
+  PS5Joypad(uint16_t vendor_id);
 };
 } // namespace inputtino

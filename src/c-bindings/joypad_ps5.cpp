@@ -1,7 +1,8 @@
 #include "helpers.hpp"
 #include <inputtino/input.h>
 
-InputtinoPS5Joypad *inputtino_joypad_ps5_create(const InputtinoDeviceDefinition *device, const InputtinoErrorHandler *eh) {
+InputtinoPS5Joypad *inputtino_joypad_ps5_create(const InputtinoDeviceDefinition *device,
+                                                const InputtinoErrorHandler *eh) {
   auto joypad_ = inputtino::PS5Joypad::create({
       .name = device->name ? device->name : "Inputtino virtual device",
       .vendor_id = device->vendor_id,

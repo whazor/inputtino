@@ -4,7 +4,10 @@
 #include <SDL.h>
 #include <thread>
 
+using Catch::Matchers::Contains;
+using Catch::Matchers::ContainsSubstring;
 using Catch::Matchers::Equals;
+using Catch::Matchers::SizeIs;
 using Catch::Matchers::WithinAbs;
 using namespace inputtino;
 using namespace std::chrono_literals;
@@ -89,6 +92,11 @@ TEST_CASE_METHOD(SDLTestsFixture, "PS Joypad", "[SDL]") {
 
   std::this_thread::sleep_for(250ms);
 
+  auto devices = joypad.get_nodes();
+  REQUIRE_THAT(devices, SizeIs(5)); // 3 eventXX and 2 jsYY
+  REQUIRE_THAT(devices, Contains(ContainsSubstring("/dev/input/event")));
+  REQUIRE_THAT(devices, Contains(ContainsSubstring("/dev/input/js")));
+
   // TODO: seems that I can't force it to use HIDAPI, it's picking up sysjoystick which is lacking features
   SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI, "1");
   SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS5, "1");
@@ -103,7 +111,6 @@ TEST_CASE_METHOD(SDLTestsFixture, "PS Joypad", "[SDL]") {
   REQUIRE(gc);
 
   REQUIRE(SDL_GameControllerGetType(gc) == SDL_CONTROLLER_TYPE_PS5);
-
   { // Rumble
     // Checking for basic capability
     REQUIRE(SDL_GameControllerHasRumble(gc));
@@ -256,6 +263,11 @@ TEST_CASE_METHOD(SDLTestsFixture, "XBOX Joypad", "[SDL]") {
 
   std::this_thread::sleep_for(150ms);
 
+  auto devices = joypad.get_nodes();
+  REQUIRE_THAT(devices, SizeIs(2)); // 1 eventXX and 1 jsYY
+  REQUIRE_THAT(devices, Contains(ContainsSubstring("/dev/input/event")));
+  REQUIRE_THAT(devices, Contains(ContainsSubstring("/dev/input/js")));
+
   // Initializing the controller
   flush_sdl_events();
   SDL_GameController *gc = SDL_GameControllerOpen(0);
@@ -323,6 +335,11 @@ TEST_CASE_METHOD(SDLTestsFixture, "Nintendo Joypad", "[SDL]") {
   auto joypad = std::move(*SwitchJoypad::create());
 
   std::this_thread::sleep_for(150ms);
+
+  auto devices = joypad.get_nodes();
+  REQUIRE_THAT(devices, SizeIs(2)); // 1 eventXX and 1 jsYY
+  REQUIRE_THAT(devices, Contains(ContainsSubstring("/dev/input/event")));
+  REQUIRE_THAT(devices, Contains(ContainsSubstring("/dev/input/js")));
 
   // Initializing the controller
   flush_sdl_events();
