@@ -4,6 +4,7 @@
 #include <uhid/protected_types.hpp>
 #include <uhid/ps5.hpp>
 #include <uhid/uhid.hpp>
+#include <random>
 
 namespace inputtino {
 
@@ -51,6 +52,12 @@ static void on_uhid_event(std::shared_ptr<PS5JoypadState> state, uhid_event ev, 
       std::copy(&uhid::ps5_pairing_info[0],
                 &uhid::ps5_pairing_info[0] + sizeof(uhid::ps5_pairing_info),
                 &answer.u.get_report_reply.data[0]);
+
+      // Copy MAC address data
+      std::reverse_copy(&state->mac_address[0],
+                        &state->mac_address[0] + sizeof(state->mac_address),
+                        &answer.u.get_report_reply.data[1]);
+
       answer.u.get_report_reply.size = sizeof(uhid::ps5_pairing_info);
       break;
     }
@@ -100,7 +107,17 @@ static void on_uhid_event(std::shared_ptr<PS5JoypadState> state, uhid_event ev, 
   }
 }
 
-PS5Joypad::PS5Joypad() : _state(std::make_shared<PS5JoypadState>()) {}
+void generate_mac_address(PS5JoypadState *state) {
+  std::default_random_engine generator;
+  std::uniform_int_distribution<unsigned char> distribution(0, 0xFF);
+  for (int i = 0; i < 6; i++) {
+    state->mac_address[i] = distribution(generator);
+  }
+}
+
+PS5Joypad::PS5Joypad() : _state(std::make_shared<PS5JoypadState>()) {
+  generate_mac_address(this->_state.get());
+}
 
 PS5Joypad::~PS5Joypad() {
   if (this->_state && this->_state->dev) {
