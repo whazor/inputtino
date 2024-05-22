@@ -163,22 +163,25 @@ template <typename T> std::string to_hex(T i) {
   return stream.str();
 }
 
-std::string mac_to_str(const PS5JoypadState &state) {
+std::string PS5Joypad::get_mac_address() const {
   std::stringstream stream;
-  stream << std::hex << (unsigned int)state.mac_address[0] << ":" << (unsigned int)state.mac_address[1] << ":"
-         << (unsigned int)state.mac_address[2] << ":" << (unsigned int)state.mac_address[3] << ":"
-         << (unsigned int)state.mac_address[4] << ":" << (unsigned int)state.mac_address[5];
+  stream << std::hex << (unsigned int)_state->mac_address[0] << ":" << (unsigned int)_state->mac_address[1] << ":"
+         << (unsigned int)_state->mac_address[2] << ":" << (unsigned int)_state->mac_address[3] << ":"
+         << (unsigned int)_state->mac_address[4] << ":" << (unsigned int)_state->mac_address[5];
   return stream.str();
 }
 
 /**
  * The trick here is to match the devices under /sys/devices/virtual/misc/uhid/
  * with the MAC address that we've set for the current device
+ *
+ * @returns a list of paths to the created input devices ex:
+ * /sys/devices/virtual/misc/uhid/0003:054C:0CE6.000D/input/input58/
  */
-std::vector<std::string> PS5Joypad::get_nodes() const {
+std::vector<std::string> PS5Joypad::get_sys_nodes() const {
   std::vector<std::string> nodes;
   auto base_path = "/sys/devices/virtual/misc/uhid/";
-  auto target_mac = mac_to_str(*this->_state);
+  auto target_mac = get_mac_address();
   if (std::filesystem::exists(base_path)) {
     auto uhid_entries = std::filesystem::directory_iterator{base_path};
     for (auto uhid_entry : uhid_entries) {
@@ -200,16 +203,7 @@ std::vector<std::string> PS5Joypad::get_nodes() const {
                 std::ifstream dev_uniq_file{dev_uniq_path};
                 std::string line;
                 std::getline(dev_uniq_file, line);
-                if (line.find(target_mac) != std::string::npos) {
-                  // Found a match! Let's scan the folders for the corresponding event and js node
-                  auto dev_nodes = std::filesystem::directory_iterator{dev_entry.path()};
-                  for (auto dev_node : dev_nodes) {
-                    if (dev_node.is_directory() && (dev_node.path().filename().string().rfind("event", 0) == 0 ||
-                                                    dev_node.path().filename().string().rfind("js", 0) == 0)) {
-                      nodes.push_back("/dev/input/" / dev_node.path().filename());
-                    }
-                  }
-                }
+                nodes.push_back(dev_entry.path().string());
               } else {
                 fprintf(stderr, "Unable to get joypad nodes, path %s does not exist\n", dev_uniq_path.string().c_str());
               }
@@ -223,6 +217,23 @@ std::vector<std::string> PS5Joypad::get_nodes() const {
   } else {
     fprintf(stderr, "Unable to get joypad nodes, path %s does not exist\n", base_path);
   }
+  return nodes;
+}
+
+std::vector<std::string> PS5Joypad::get_nodes() const {
+  std::vector<std::string> nodes;
+
+  auto sys_nodes = get_sys_nodes();
+  for (const auto dev_entry : sys_nodes) {
+    auto dev_nodes = std::filesystem::directory_iterator{dev_entry};
+    for (auto dev_node : dev_nodes) {
+      if (dev_node.is_directory() && (dev_node.path().filename().string().rfind("event", 0) == 0 ||
+                                      dev_node.path().filename().string().rfind("js", 0) == 0)) {
+        nodes.push_back(("/dev/input/" / dev_node.path().filename()).string());
+      }
+    }
+  }
+
   return nodes;
 }
 

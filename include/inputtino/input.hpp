@@ -426,6 +426,8 @@ public:
 protected:
   typedef struct PS5JoypadState PS5JoypadState;
   std::shared_ptr<PS5JoypadState> _state;
+  std::string get_mac_address() const;
+  std::vector<std::string> get_sys_nodes() const;
 
 private:
   PS5Joypad(uint16_t vendor_id);
