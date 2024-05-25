@@ -163,12 +163,17 @@ TEST_CASE_METHOD(SDLTestsFixture, "PS Joypad", "[SDL]") {
     joypad.set_stick(Joypad::LS, 1000, 2000);
     flush_sdl_events();
     REQUIRE(SDL_GameControllerGetAxis(gc, SDL_CONTROLLER_AXIS_LEFTX) == 899);
-    REQUIRE(SDL_GameControllerGetAxis(gc, SDL_CONTROLLER_AXIS_LEFTY) == 1927);
+    REQUIRE(SDL_GameControllerGetAxis(gc, SDL_CONTROLLER_AXIS_LEFTY) == -1928);
+
+    joypad.set_stick(Joypad::RS, 1000, 2000);
+    flush_sdl_events();
+    REQUIRE(SDL_GameControllerGetAxis(gc, SDL_CONTROLLER_AXIS_LEFTX) == 899);
+    REQUIRE(SDL_GameControllerGetAxis(gc, SDL_CONTROLLER_AXIS_LEFTY) == -1928);
 
     joypad.set_stick(Joypad::RS, -16384, -32768);
     flush_sdl_events();
     REQUIRE(SDL_GameControllerGetAxis(gc, SDL_CONTROLLER_AXIS_RIGHTX) == -16320);
-    REQUIRE(SDL_GameControllerGetAxis(gc, SDL_CONTROLLER_AXIS_RIGHTY) == -32768);
+    REQUIRE(SDL_GameControllerGetAxis(gc, SDL_CONTROLLER_AXIS_RIGHTY) == 32767);
 
     joypad.set_triggers(125, 255);
     flush_sdl_events();

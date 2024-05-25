@@ -321,13 +321,13 @@ void PS5Joypad::set_stick(Joypad::STICK_POSITION stick_type, short x, short y) {
   switch (stick_type) {
   case RS: {
     this->_state->current_state.rx = scale_value(x, -32768, 32767, uhid::PS5_AXIS_MIN, uhid::PS5_AXIS_MAX);
-    this->_state->current_state.ry = scale_value(y, -32768, 32767, uhid::PS5_AXIS_MIN, uhid::PS5_AXIS_MAX);
+    this->_state->current_state.ry = scale_value(-y, -32768, 32767, uhid::PS5_AXIS_MIN, uhid::PS5_AXIS_MAX);
     send_report(*this->_state);
     break;
   }
   case LS: {
     this->_state->current_state.x = scale_value(x, -32768, 32767, uhid::PS5_AXIS_MIN, uhid::PS5_AXIS_MAX);
-    this->_state->current_state.y = scale_value(y, -32768, 32767, uhid::PS5_AXIS_MIN, uhid::PS5_AXIS_MAX);
+    this->_state->current_state.y = scale_value(-y, -32768, 32767, uhid::PS5_AXIS_MIN, uhid::PS5_AXIS_MAX);
     send_report(*this->_state);
     break;
   }

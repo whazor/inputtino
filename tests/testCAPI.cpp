@@ -1,6 +1,7 @@
 #include "catch2/catch_all.hpp"
 #include <filesystem>
 #include <inputtino/input.h>
+#include <thread>
 
 TEST_CASE("C Mouse API", "[C-API]") {
   InputtinoErrorHandler error_handler = {.eh = [](const char *message, void *_data) { FAIL(message); },
@@ -187,7 +188,7 @@ TEST_CASE("C PS5 API", "[C-API]") {
                                    .version = 0x8111};
   auto ps_pad = inputtino_joypad_ps5_create(&def, &error_handler);
   REQUIRE(ps_pad != nullptr);
-
+  std::this_thread::sleep_for(std::chrono::milliseconds(50));
   int num_nodes = 0;
   auto nodes = inputtino_joypad_ps5_get_nodes(ps_pad, &num_nodes);
   REQUIRE(num_nodes == 5);
