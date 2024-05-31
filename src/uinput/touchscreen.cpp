@@ -1,4 +1,5 @@
 #include "inputtino/input.hpp"
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <inputtino/protected_types.hpp>
