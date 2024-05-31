@@ -337,26 +337,29 @@ void PS5Joypad::set_on_rumble(const std::function<void(int, int)> &callback) {
   this->_state->on_rumble = callback;
 }
 
-static inline float rad2deg(float rad) {
-  return rad * (180.0f / (float)M_PI);
+static __le16 to_le_signed(float original, float value) {
+  auto le = htole16(value);
+  if (original < 0) { // adjust sign bit
+    le |= (1 << 15);  // set the last bit (bit 15) to 1
+  }
+  return le;
 }
 
 void PS5Joypad::set_motion(PS5Joypad::MOTION_TYPE type, float x, float y, float z) {
   switch (type) {
   case ACCELERATION: {
-    this->_state->current_state.accel[0] = htole16((x * uhid::SDL_STANDARD_GRAVITY * 100));
-    this->_state->current_state.accel[1] = htole16((y * uhid::SDL_STANDARD_GRAVITY * 100));
-    this->_state->current_state.accel[2] = htole16((z * uhid::SDL_STANDARD_GRAVITY * 100));
+    this->_state->current_state.accel[0] = to_le_signed(x, (x * uhid::SDL_STANDARD_GRAVITY * 100));
+    this->_state->current_state.accel[1] = to_le_signed(y, (y * uhid::SDL_STANDARD_GRAVITY * 100));
+    this->_state->current_state.accel[2] = to_le_signed(z, (z * uhid::SDL_STANDARD_GRAVITY * 100));
+
     send_report(*this->_state);
     break;
   }
   case GYROSCOPE: {
-    this->_state->current_state.gyro[0] =
-        htole16(rad2deg((x + uhid::gyro_calib_bias) / uhid::gyro_calib_pitch_denom) * uhid::PS5_GYRO_RES_PER_DEG_S * 5);
-    this->_state->current_state.gyro[1] =
-        htole16(rad2deg((y + uhid::gyro_calib_bias) / uhid::gyro_calib_yaw_denom) * uhid::PS5_GYRO_RES_PER_DEG_S * 5);
-    this->_state->current_state.gyro[2] =
-        htole16(rad2deg((z + uhid::gyro_calib_bias) / uhid::gyro_calib_roll_denom) * uhid::PS5_GYRO_RES_PER_DEG_S * 5);
+    this->_state->current_state.gyro[0] = to_le_signed(x, x * uhid::gyro_resolution);
+    this->_state->current_state.gyro[1] = to_le_signed(y, y * uhid::gyro_resolution);
+    this->_state->current_state.gyro[2] = to_le_signed(z, z * uhid::gyro_resolution);
+
     send_report(*this->_state);
     break;
   }

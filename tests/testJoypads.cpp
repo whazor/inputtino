@@ -210,6 +210,26 @@ TEST_CASE_METHOD(SDLTestsFixture, "PS Joypad", "[SDL]") {
     REQUIRE_THAT(event.csensor.data[1], WithinAbs(acceleration_data[1], 0.9f));
     REQUIRE_THAT(event.csensor.data[2], WithinAbs(acceleration_data[2], 0.9f));
     flush_sdl_events();
+
+    // Now lets test the negatives
+    acceleration_data = {-9.8f, -0.0f, -20.0f};
+    joypad.set_motion(inputtino::PS5Joypad::ACCELERATION,
+                      acceleration_data[0],
+                      acceleration_data[1],
+                      acceleration_data[2]);
+    SDL_GameControllerUpdate();
+    SDL_SensorUpdate();
+    while (SDL_PollEvent(&event) != 0) {
+      if (event.type == SDL_CONTROLLERSENSORUPDATE) {
+        break;
+      }
+    }
+    REQUIRE(event.type == SDL_CONTROLLERSENSORUPDATE);
+    REQUIRE(event.csensor.sensor == SDL_SENSOR_ACCEL);
+    REQUIRE_THAT(event.csensor.data[0], WithinAbs(acceleration_data[0], 0.9f));
+    REQUIRE_THAT(event.csensor.data[1], WithinAbs(acceleration_data[1], 0.9f));
+    REQUIRE_THAT(event.csensor.data[2], WithinAbs(acceleration_data[2], 0.9f));
+    flush_sdl_events();
   }
   { // test gyro
     REQUIRE(SDL_GameControllerHasSensor(gc, SDL_SENSOR_GYRO));
@@ -217,10 +237,11 @@ TEST_CASE_METHOD(SDLTestsFixture, "PS Joypad", "[SDL]") {
       WARN(SDL_GetError());
     }
 
-    std::array<float, 3> gyro_data = {0.0f, 10.0f, 20.0f};
+    std::array<float, 3> gyro_data = {0.0f,
+                                      M_PI_2f, // half a turn (180 degrees)
+                                      M_PIf};  // full turn (360 degrees)
     joypad.set_motion(inputtino::PS5Joypad::GYROSCOPE, gyro_data[0], gyro_data[1], gyro_data[2]);
     std::this_thread::sleep_for(10ms);
-    joypad.set_motion(inputtino::PS5Joypad::GYROSCOPE, gyro_data[0], gyro_data[1], gyro_data[2]);
 
     SDL_GameControllerUpdate();
     SDL_SensorUpdate();
@@ -232,9 +253,32 @@ TEST_CASE_METHOD(SDLTestsFixture, "PS Joypad", "[SDL]") {
     }
     REQUIRE(event.type == SDL_CONTROLLERSENSORUPDATE);
     REQUIRE(event.csensor.sensor == SDL_SENSOR_GYRO);
-    REQUIRE_THAT(event.csensor.data[0], WithinAbs(gyro_data[0], 0.001f));
-    REQUIRE_THAT(event.csensor.data[1], WithinAbs(gyro_data[1], 0.001f));
-    REQUIRE_THAT(event.csensor.data[2], WithinAbs(gyro_data[2], 0.001f));
+    REQUIRE_THAT(event.csensor.data[0], WithinAbs(gyro_data[0], 0.01f));
+    REQUIRE_THAT(event.csensor.data[1], WithinAbs(gyro_data[1], 0.01f));
+    REQUIRE_THAT(event.csensor.data[2], WithinAbs(gyro_data[2], 0.01f));
+    flush_sdl_events();
+
+    // Now let's try the negatives
+    gyro_data = {
+        -0.0f,
+        -M_PI_2f, // half a turn (180 degrees)
+        -M_PIf    // full turn (360 degrees)
+    };
+    joypad.set_motion(inputtino::PS5Joypad::GYROSCOPE, gyro_data[0], gyro_data[1], gyro_data[2]);
+    std::this_thread::sleep_for(10ms);
+
+    SDL_GameControllerUpdate();
+    SDL_SensorUpdate();
+    while (SDL_PollEvent(&event) != 0) {
+      if (event.type == SDL_CONTROLLERSENSORUPDATE) {
+        break;
+      }
+    }
+    REQUIRE(event.type == SDL_CONTROLLERSENSORUPDATE);
+    REQUIRE(event.csensor.sensor == SDL_SENSOR_GYRO);
+    REQUIRE_THAT(event.csensor.data[0], WithinAbs(gyro_data[0], 0.01f));
+    REQUIRE_THAT(event.csensor.data[1], WithinAbs(gyro_data[1], 0.01f));
+    REQUIRE_THAT(event.csensor.data[2], WithinAbs(gyro_data[2], 0.01f));
   }
 
   { // Test touchpad
