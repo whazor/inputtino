@@ -122,6 +122,9 @@ void generate_mac_address(PS5JoypadState *state) {
 PS5Joypad::PS5Joypad(uint16_t vendor_id) : _state(std::make_shared<PS5JoypadState>()) {
   generate_mac_address(this->_state.get());
   this->_state->vendor_id = vendor_id;
+  // Set touchpad as not pressed
+  this->_state->current_state.points[0].contact = 1;
+  this->_state->current_state.points[1].contact = 1;
 }
 
 PS5Joypad::~PS5Joypad() {
@@ -383,14 +386,17 @@ void PS5Joypad::set_on_led(const std::function<void(int, int, int)> &callback) {
 
 void PS5Joypad::place_finger(int finger_nr, uint16_t x, uint16_t y) {
   if (finger_nr <= 1) {
+    // If this finger was previously unpressed, we should increase the touch id
+    if (this->_state->current_state.points[finger_nr].contact == 1) {
+      this->_state->current_state.points[finger_nr].id = ++this->_state->last_touch_id;
+    }
     this->_state->current_state.points[finger_nr].contact = 0;
-    this->_state->current_state.points[finger_nr].id = this->_state->touch_points_ids[finger_nr] + 1;
 
     this->_state->current_state.points[finger_nr].x_lo = static_cast<uint8_t>(x & 0x00FF);
     this->_state->current_state.points[finger_nr].x_hi = static_cast<uint8_t>((x & 0xFF00) >> 8);
 
-    this->_state->current_state.points[finger_nr].y_lo = static_cast<uint8_t>(y & 0x00FF);
-    this->_state->current_state.points[finger_nr].y_hi = static_cast<uint8_t>((y & 0xFF00) >> 4);
+    this->_state->current_state.points[finger_nr].y_lo = static_cast<uint8_t>((y & 0x00F0) << 4);
+    this->_state->current_state.points[finger_nr].y_hi = static_cast<uint8_t>(y >> 4);
 
     send_report(*this->_state);
   }
@@ -398,10 +404,9 @@ void PS5Joypad::place_finger(int finger_nr, uint16_t x, uint16_t y) {
 
 void PS5Joypad::release_finger(int finger_nr) {
   if (finger_nr <= 1) {
-    this->_state->touch_points_ids[finger_nr]++;
     // if it goes above 0x7F we should reset it to 0
-    if (this->_state->touch_points_ids[finger_nr] > 0x7F) {
-      this->_state->touch_points_ids[finger_nr] = 0;
+    if (this->_state->last_touch_id >= 0x7E) {
+      this->_state->last_touch_id = 0;
     }
     this->_state->current_state.points[finger_nr].contact = 1;
     send_report(*this->_state);
