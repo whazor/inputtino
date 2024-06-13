@@ -343,8 +343,8 @@ TEST_CASE_METHOD(SDLTestsFixture, "XBOX Joypad", "[SDL]") {
     // https://github.com/libsdl-org/SDL/blob/da8fc70a83cf6b76d5ea75c39928a7961bd163d3/src/joystick/linux/SDL_sysjoystick.c#L1628
     SDL_GameControllerRumble(gc, 100, 200, 100);
     std::this_thread::sleep_for(30ms); // wait for the effect to be picked up
-    REQUIRE(rumble_data->first == 200);
-    REQUIRE(rumble_data->second == 100);
+    REQUIRE(rumble_data->first == 100);
+    REQUIRE(rumble_data->second == 200);
   }
 
   { // Sticks
@@ -414,8 +414,8 @@ TEST_CASE_METHOD(SDLTestsFixture, "Nintendo Joypad", "[SDL]") {
     // https://github.com/libsdl-org/SDL/blob/da8fc70a83cf6b76d5ea75c39928a7961bd163d3/src/joystick/linux/SDL_sysjoystick.c#L1628
     SDL_GameControllerRumble(gc, 100, 200, 100);
     std::this_thread::sleep_for(30ms); // wait for the effect to be picked up
-    REQUIRE(rumble_data->first == 200);
-    REQUIRE(rumble_data->second == 100);
+    REQUIRE(rumble_data->first == 100);
+    REQUIRE(rumble_data->second == 200);
   }
 
   SDL_TEST_BUTTON(Joypad::MISC_FLAG, SDL_CONTROLLER_BUTTON_MISC1);

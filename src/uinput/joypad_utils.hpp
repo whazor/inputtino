@@ -16,6 +16,8 @@ namespace inputtino {
 
 using namespace std::chrono_literals;
 
+static constexpr int MAX_GAIN = 0xFFFF;
+
 /**
  * Joypads will also have one `/dev/input/js*` device as child, we want to expose that as well
  */
@@ -53,7 +55,7 @@ struct ActiveRumbleEffect {
   struct {
     std::uint32_t weak, strong;
   } end;
-  int gain = 1;
+  int gain = MAX_GAIN;
 
   std::pair<std::uint32_t, std::uint32_t> previous = {0, 0};
 };
@@ -68,8 +70,8 @@ static std::uint32_t rumble_magnitude(std::chrono::milliseconds time_left,
 
 static std::pair<std::uint32_t, std::uint32_t> simulate_rumble(const ActiveRumbleEffect &effect,
                                                                const std::chrono::steady_clock::time_point &now) {
-  if (now < effect.start_point) {
-    return {0, 0}; // needs to be delayed
+  if (effect.end_point < now || now < effect.start_point) {
+    return {0, 0};
   }
 
   auto time_left = std::chrono::duration_cast<std::chrono::milliseconds>(effect.end_point - now);
@@ -92,8 +94,8 @@ static std::pair<std::uint32_t, std::uint32_t> simulate_rumble(const ActiveRumbl
     strong = rumble_magnitude(t, effect.start.strong, effect.end.strong, effect.length);
   }
 
-  weak = weak * effect.gain;
-  strong = strong * effect.gain;
+  weak = weak * effect.gain / MAX_GAIN;
+  strong = strong * effect.gain / MAX_GAIN;
   return {weak, strong};
 }
 
@@ -168,6 +170,9 @@ static void event_listener(const std::shared_ptr<BaseJoypadState> &state) {
   /* Local copy of all the uploaded ff effects */
   std::map<int, ff_effect> ff_effects = {};
 
+  /* This can only be set globally when receiving FF_GAIN */
+  int current_gain = MAX_GAIN;
+
   /* Currently running ff effects */
   std::vector<ActiveRumbleEffect> active_effects = {};
 
@@ -187,8 +192,6 @@ static void event_listener(const std::shared_ptr<BaseJoypadState> &state) {
   while (!state->stop_listening_events) {
     std::this_thread::sleep_for(20ms); // TODO: configurable?
 
-    int effect_gain = 1;
-
     auto events = fetch_events(uinput_fd);
     for (auto ev : events) {
       if (ev->type == EV_UINPUT && ev->code == UI_FF_UPLOAD) { // Upload a new FF effect
@@ -207,18 +210,17 @@ static void event_listener(const std::shared_ptr<BaseJoypadState> &state) {
 
         ioctl(uinput_fd, UI_BEGIN_FF_ERASE, &erase); // retrieve ff_erase
 
-        ff_effects.erase(erase.effect_id);
+        remove_effects([effect_id = erase.effect_id](const auto &effect) { return effect.effect_id == effect_id; });
         erase.retval = 0;
 
         ioctl(uinput_fd, UI_END_FF_ERASE, &erase);
       } else if (ev->type == EV_FF && ev->code == FF_GAIN) { // Force feedback set gain
-        effect_gain = std::clamp(ev->value, 0, 0xFFFF);
+        current_gain = std::clamp(ev->value, 0, MAX_GAIN);
       } else if (ev->type == EV_FF) { // Force feedback effect
         auto effect_id = ev->code;
         if (ev->value) { // Activate
-          if (ff_effects.find(effect_id) != ff_effects.end() && state->on_rumble) {
-            auto effect = ff_effects[effect_id];
-            active_effects.emplace_back(create_rumble_effect(effect_id, effect_gain, effect));
+          if (auto effect = ff_effects.find(effect_id); effect != ff_effects.end()) {
+            active_effects.emplace_back(create_rumble_effect(effect_id, current_gain, effect->second));
           }
         } else { // Deactivate
           remove_effects([effect_id](const auto &effect) { return effect.effect_id == effect_id; });
@@ -241,7 +243,7 @@ static void event_listener(const std::shared_ptr<BaseJoypadState> &state) {
         effect.previous.second = strong;
 
         if (auto callback = state->on_rumble) {
-          callback.value()(weak, strong);
+          callback.value()(strong, weak);
         }
       }
     }
