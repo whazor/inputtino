@@ -94,6 +94,11 @@ static void on_uhid_event(std::shared_ptr<PS5JoypadState> state, uhid_event ev, 
       if (state->on_rumble) {
         (*state->on_rumble)(left, right);
       }
+    } else if(report->valid_flag0 == 0 && report->valid_flag1 == 0 && report->valid_flag2 == 0){
+      // Seems to be a special stop rumble event, let's propagate it
+      if (state->on_rumble) {
+        (*state->on_rumble)(0, 0);
+      }
     }
 
     /*

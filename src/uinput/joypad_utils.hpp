@@ -16,7 +16,7 @@ namespace inputtino {
 
 using namespace std::chrono_literals;
 
-static constexpr int MAX_GAIN = 0xFFFF;
+static constexpr long MAX_GAIN = 0xFFFF;
 
 /**
  * Joypads will also have one `/dev/input/js*` device as child, we want to expose that as well
@@ -42,41 +42,40 @@ static std::vector<std::string> get_child_dev_nodes(libevdev_uinput *device) {
 }
 
 struct ActiveRumbleEffect {
-  int effect_id;
-
   std::chrono::steady_clock::time_point start_point;
   std::chrono::steady_clock::time_point end_point;
   std::chrono::milliseconds length;
+  std::chrono::milliseconds delay;
   ff_envelope envelope;
+
   struct {
-    std::uint32_t weak, strong;
+    long weak, strong;
   } start;
 
   struct {
-    std::uint32_t weak, strong;
+    long weak, strong;
   } end;
-  int gain = MAX_GAIN;
-
-  std::pair<std::uint32_t, std::uint32_t> previous = {0, 0};
 };
 
-static std::uint32_t rumble_magnitude(std::chrono::milliseconds time_left,
-                                      std::uint32_t start,
-                                      std::uint32_t end,
-                                      std::chrono::milliseconds length) {
+static long rumble_magnitude(std::chrono::milliseconds time_left,
+                             std::uint32_t start,
+                             std::uint32_t end,
+                             std::chrono::milliseconds length) {
   auto rel = end - start;
   return start + (rel * time_left.count() / length.count());
 }
 
-static std::pair<std::uint32_t, std::uint32_t> simulate_rumble(const ActiveRumbleEffect &effect,
-                                                               const std::chrono::steady_clock::time_point &now) {
+static std::pair<long, long> simulate_rumble(const ActiveRumbleEffect &effect,
+                                             const std::chrono::steady_clock::time_point &now) {
   if (effect.end_point < now || now < effect.start_point) {
     return {0, 0};
   }
 
   auto time_left = std::chrono::duration_cast<std::chrono::milliseconds>(effect.end_point - now);
   auto t = effect.length - time_left;
-  std::uint32_t weak = 0, strong = 0;
+
+  auto weak = rumble_magnitude(t, effect.start.weak, effect.end.weak, effect.length);
+  auto strong = rumble_magnitude(t, effect.start.strong, effect.end.strong, effect.length);
 
   if (t.count() < effect.envelope.attack_length) {
     weak = (effect.envelope.attack_level * t.count() + weak * (effect.envelope.attack_length - t.count())) /
@@ -89,27 +88,19 @@ static std::pair<std::uint32_t, std::uint32_t> simulate_rumble(const ActiveRumbl
     weak = (effect.envelope.fade_level * dt + weak * (effect.envelope.fade_length - dt)) / effect.envelope.fade_length;
     strong = (effect.envelope.fade_level * dt + strong * (effect.envelope.fade_length - dt)) /
              effect.envelope.fade_length;
-  } else {
-    weak = rumble_magnitude(t, effect.start.weak, effect.end.weak, effect.length);
-    strong = rumble_magnitude(t, effect.start.strong, effect.end.strong, effect.length);
   }
 
-  weak = weak * effect.gain / MAX_GAIN;
-  strong = strong * effect.gain / MAX_GAIN;
   return {weak, strong};
 }
 
-static ActiveRumbleEffect create_rumble_effect(int effect_id, int effect_gain, const ff_effect &effect) {
+static ActiveRumbleEffect create_rumble_effect(const ff_effect &effect) {
   // All duration values are expressed in ms. Values above 32767 ms (0x7fff) should not be used
-  auto delay = std::chrono::milliseconds{std::clamp(effect.replay.delay, (__u16)0, (__u16)32767)};
-  auto length = std::chrono::milliseconds{std::clamp(effect.replay.length, (__u16)0, (__u16)32767)};
-  auto now = std::chrono::steady_clock::now();
-  ActiveRumbleEffect r_effect{.effect_id = effect_id,
-                              .start_point = now + delay,
-                              .end_point = now + delay + length,
-                              .length = length,
-                              .envelope = {},
-                              .gain = effect_gain};
+  ActiveRumbleEffect r_effect{
+      .start_point = std::chrono::steady_clock::time_point::min(),
+      .end_point = std::chrono::steady_clock::time_point::min(),
+      .length = std::chrono::milliseconds{std::clamp(effect.replay.length, (__u16)0, (__u16)32767)},
+      .delay = std::chrono::milliseconds{std::clamp(effect.replay.delay, (__u16)0, (__u16)32767)},
+      .envelope = {}};
   switch (effect.type) {
   case FF_CONSTANT:
     r_effect.start.weak = effect.u.constant.level;
@@ -168,26 +159,11 @@ static void event_listener(const std::shared_ptr<BaseJoypadState> &state) {
   fcntl(uinput_fd, F_SETFL, flags | O_NONBLOCK);
 
   /* Local copy of all the uploaded ff effects */
-  std::map<int, ff_effect> ff_effects = {};
+  std::map<int, ActiveRumbleEffect> ff_effects = {};
+  std::pair<std::uint32_t, std::uint32_t> prev_rumble = {0, 0};
 
   /* This can only be set globally when receiving FF_GAIN */
-  int current_gain = MAX_GAIN;
-
-  /* Currently running ff effects */
-  std::vector<ActiveRumbleEffect> active_effects = {};
-
-  auto remove_effects = [&](auto filter_fn) {
-    active_effects.erase(std::remove_if(active_effects.begin(),
-                                        active_effects.end(),
-                                        [&](const auto effect) {
-                                          auto to_be_removed = filter_fn(effect);
-                                          if (to_be_removed && state->on_rumble) {
-                                            state->on_rumble.value()(0, 0);
-                                          }
-                                          return to_be_removed;
-                                        }),
-                         active_effects.end());
-  };
+  unsigned int current_gain = MAX_GAIN;
 
   while (!state->stop_listening_events) {
     std::this_thread::sleep_for(20ms); // TODO: configurable?
@@ -200,7 +176,13 @@ static void event_listener(const std::shared_ptr<BaseJoypadState> &state) {
 
         ioctl(uinput_fd, UI_BEGIN_FF_UPLOAD, &upload); // retrieve the effect
 
-        ff_effects.insert_or_assign(upload.effect.id, upload.effect);
+        auto new_effect = create_rumble_effect(upload.effect);
+        if (ff_effects.find(upload.effect.id) != ff_effects.end()) {
+          // We have to keep the original start and end points of the effect
+          new_effect.start_point = ff_effects[upload.effect.id].start_point;
+          new_effect.end_point = ff_effects[upload.effect.id].end_point;
+        }
+        ff_effects.insert_or_assign(upload.effect.id, create_rumble_effect(upload.effect));
         upload.retval = 0;
 
         ioctl(uinput_fd, UI_END_FF_UPLOAD, &upload);
@@ -210,41 +192,43 @@ static void event_listener(const std::shared_ptr<BaseJoypadState> &state) {
 
         ioctl(uinput_fd, UI_BEGIN_FF_ERASE, &erase); // retrieve ff_erase
 
-        remove_effects([effect_id = erase.effect_id](const auto &effect) { return effect.effect_id == effect_id; });
+        ff_effects.erase(erase.effect_id);
         erase.retval = 0;
 
         ioctl(uinput_fd, UI_END_FF_ERASE, &erase);
       } else if (ev->type == EV_FF && ev->code == FF_GAIN) { // Force feedback set gain
-        current_gain = std::clamp(ev->value, 0, MAX_GAIN);
+        current_gain = std::clamp((long)ev->value, 0l, MAX_GAIN);
       } else if (ev->type == EV_FF) { // Force feedback effect
         auto effect_id = ev->code;
-        if (ev->value) { // Activate
-          if (auto effect = ff_effects.find(effect_id); effect != ff_effects.end()) {
-            active_effects.emplace_back(create_rumble_effect(effect_id, current_gain, effect->second));
+        if (auto effect = ff_effects.find(effect_id); effect != ff_effects.end()) {
+          if (ev->value) { // Activate
+            auto now = std::chrono::steady_clock::now();
+            effect->second.start_point = now + effect->second.delay;
+            effect->second.end_point = now + effect->second.delay + effect->second.length;
+          } else { // Deactivate
+            effect->second.end_point = std::chrono::steady_clock::time_point::min();
           }
-        } else { // Deactivate
-          remove_effects([effect_id](const auto &effect) { return effect.effect_id == effect_id; });
         }
-      } else if (ev->type == EV_LED) {
-        // TODO: support LED
       }
     }
 
     auto now = std::chrono::steady_clock::now();
 
-    // Remove effects that have ended
-    remove_effects([now](const auto effect) { return effect.end_point <= now; });
-
-    // Simulate rumble
-    for (auto effect : active_effects) {
+    // Accumulate all rumble effects
+    std::pair<long, long> current_rumble = {0, 0};
+    for (auto &[_id, effect] : ff_effects) {
       auto [weak, strong] = simulate_rumble(effect, now);
-      if (effect.previous.first != weak || effect.previous.second != strong) {
-        effect.previous.first = weak;
-        effect.previous.second = strong;
+      current_rumble.first += weak;
+      current_rumble.second += strong;
+    }
+    // Avoid sending too many events
+    if (prev_rumble.first != current_rumble.first || prev_rumble.second != current_rumble.second) {
+      prev_rumble.first = current_rumble.first;
+      prev_rumble.second = current_rumble.second;
 
-        if (auto callback = state->on_rumble) {
-          callback.value()(strong, weak);
-        }
+      if (auto callback = state->on_rumble) {
+        callback.value()(static_cast<int>((current_rumble.second * current_gain / MAX_GAIN)),
+                         static_cast<int>((current_rumble.first * current_gain / MAX_GAIN)));
       }
     }
   }
