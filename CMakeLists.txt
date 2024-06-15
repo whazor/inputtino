@@ -37,10 +37,10 @@ if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
 
-    if(NOT DEFINED CMAKE_BUILD_TYPE AND NOT DEFINED CMAKE_CONFIGURATION_TYPES)
+    if (NOT DEFINED CMAKE_BUILD_TYPE AND NOT DEFINED CMAKE_CONFIGURATION_TYPES)
         set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
         set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
-    endif()
+    endif ()
 endif ()
 
 # Make an automatic library - will be static or dynamic based on user setting
@@ -59,9 +59,9 @@ target_compile_definitions(libinputtino PUBLIC "$<$<NOT:$<BOOL:${BUILD_SHARED_LI
 include(GenerateExportHeader)
 set(export_file_name "export_shared.h")
 
-if(NOT BUILD_SHARED_LIBS)
+if (NOT BUILD_SHARED_LIBS)
     set(export_file_name "export_static.h")
-endif()
+endif ()
 
 message(STATUS "Export file name: ${export_file_name}")
 
@@ -82,11 +82,16 @@ option(LIBINPUTTINO_INSTALL "Generate the install target" OFF)
 #----------------------------------------------------------------------------------------------------------------------
 
 if (UNIX AND NOT APPLE)
-    find_package(PkgConfig)
-    pkg_check_modules(LIBEVDEV REQUIRED IMPORTED_TARGET libevdev)
-    target_link_libraries(libinputtino
-            PUBLIC
-            PkgConfig::LIBEVDEV)
+    option(LIBEVDEV_CUSTOM_INCLUDE_DIR "Location to a custom libevdev source" OFF)
+    option(LIBEVDEV_CUSTOM_LIBRARY "Location to a custom libevdev library" OFF)
+    if (LIBEVDEV_CUSTOM_INCLUDE_DIR AND LIBEVDEV_CUSTOM_LIBRARY_DIR)
+        target_include_directories(libinputtino PUBLIC "${LIBEVDEV_CUSTOM_INCLUDE_DIR}")
+        target_link_libraries(libinputtino PUBLIC "${LIBEVDEV_CUSTOM_LIBRARY_DIR}")
+    else ()
+        find_package(PkgConfig)
+        pkg_check_modules(LIBEVDEV REQUIRED IMPORTED_TARGET libevdev)
+        target_link_libraries(libinputtino PUBLIC PkgConfig::LIBEVDEV)
+    endif ()
 endif ()
 
 find_program(CCACHE_FOUND ccache)
@@ -103,7 +108,7 @@ set(PUBLIC_HEADERS
         include/inputtino/result.hpp
         include/inputtino/input.h)
 
-if(UNIX AND NOT APPLE)
+if (UNIX AND NOT APPLE)
     file(GLOB SRC_LIST SRCS src/uinput/*.cpp)
     target_sources(libinputtino PRIVATE
             ${SRC_LIST}
@@ -145,7 +150,7 @@ if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     set_if_undefined(CMAKE_CXX_VISIBILITY_PRESET hidden)
     set_if_undefined(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 
-    if(LIBINPUTTINO_INSTALL AND NOT CMAKE_SKIP_INSTALL_RULES)
+    if (LIBINPUTTINO_INSTALL AND NOT CMAKE_SKIP_INSTALL_RULES)
         install(TARGETS libinputtino
                 EXPORT libinputtino_export
                 RUNTIME COMPONENT libinputtino
