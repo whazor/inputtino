@@ -94,7 +94,7 @@ static void on_uhid_event(std::shared_ptr<PS5JoypadState> state, uhid_event ev, 
       if (state->on_rumble) {
         (*state->on_rumble)(left, right);
       }
-    } else if(report->valid_flag0 == 0 && report->valid_flag1 == 0 && report->valid_flag2 == 0){
+    } else if (report->valid_flag0 == 0 && report->valid_flag1 == 0 && report->valid_flag2 == 0) {
       // Seems to be a special stop rumble event, let's propagate it
       if (state->on_rumble) {
         (*state->on_rumble)(0, 0);
@@ -130,6 +130,9 @@ PS5Joypad::PS5Joypad(uint16_t vendor_id) : _state(std::make_shared<PS5JoypadStat
   // Set touchpad as not pressed
   this->_state->current_state.points[0].contact = 1;
   this->_state->current_state.points[1].contact = 1;
+  // Set the battery to 100% (so that if the client doesn't report it we don't trigger annoying low battery warnings)
+  this->_state->current_state.battery_charge = 10;
+  this->_state->current_state.battery_status = BATTERY_FULL;
 }
 
 PS5Joypad::~PS5Joypad() {
@@ -174,7 +177,8 @@ template <typename T> std::string to_hex(T i) {
 
 std::string PS5Joypad::get_mac_address() const {
   std::stringstream stream;
-  stream << std::hex << (unsigned int)_state->mac_address[0] << ":" << (unsigned int)_state->mac_address[1] << ":"
+  stream << std::hex << std::setfill('0') << std::setw(2) //
+         << (unsigned int)_state->mac_address[0] << ":" << (unsigned int)_state->mac_address[1] << ":"
          << (unsigned int)_state->mac_address[2] << ":" << (unsigned int)_state->mac_address[3] << ":"
          << (unsigned int)_state->mac_address[4] << ":" << (unsigned int)_state->mac_address[5];
   return stream.str();
@@ -212,7 +216,9 @@ std::vector<std::string> PS5Joypad::get_sys_nodes() const {
                 std::ifstream dev_uniq_file{dev_uniq_path};
                 std::string line;
                 std::getline(dev_uniq_file, line);
-                nodes.push_back(dev_entry.path().string());
+                if (line == target_mac) {
+                  nodes.push_back(dev_entry.path().string());
+                }
               } else {
                 fprintf(stderr, "Unable to get joypad nodes, path %s does not exist\n", dev_uniq_path.string().c_str());
               }

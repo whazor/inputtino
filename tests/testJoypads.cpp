@@ -1,4 +1,6 @@
 #include "catch2/catch_all.hpp"
+#include <filesystem>
+#include <fstream>
 #include <inputtino/input.hpp>
 #include <iostream>
 #include <SDL.h>
@@ -84,6 +86,25 @@ void test_buttons(SDL_GameController *gc, Joypad &joypad) {
   REQUIRE(SDL_GameControllerGetButton(gc, SDL_CONTROLLER_BUTTON_B) == 1);
   REQUIRE(SDL_GameControllerGetButton(gc, SDL_CONTROLLER_BUTTON_X) == 1);
   REQUIRE(SDL_GameControllerGetButton(gc, SDL_CONTROLLER_BUTTON_Y) == 1);
+}
+
+/**
+ * @param power_supply_path (ex:
+ * "/sys/devices/virtual/misc/uhid/0003:054C:0CE6.0016/power_supply/ps-controller-battery-00:21:c1:75:88:38/")
+ * @return a pair of <capacity, status> as read from the system
+ */
+std::pair<int, std::string> get_system_battery(const std::filesystem::path &power_supply_path) {
+  // It's fairly simple, we have to read two files: capacity and status
+  std::ifstream capacity_file(power_supply_path / "capacity");
+  std::ifstream status_file(power_supply_path / "status");
+  if (!capacity_file.is_open() || !status_file.is_open()) {
+    return {0, "Unknown"};
+  }
+  int capacity = 0;
+  std::string status;
+  capacity_file >> capacity;
+  status_file >> status;
+  return {capacity, status};
 }
 
 TEST_CASE_METHOD(SDLTestsFixture, "PS Joypad", "[SDL]") {
@@ -292,11 +313,53 @@ TEST_CASE_METHOD(SDLTestsFixture, "PS Joypad", "[SDL]") {
   }
 
   { // Test battery
-    joypad.set_battery(inputtino::PS5Joypad::BATTERY_CHARGHING, 80);
-    auto joy = SDL_GameControllerGetJoystick(gc);
-    auto level = SDL_JoystickCurrentPowerLevel(joy);
-    if (level != SDL_JOYSTICK_POWER_UNKNOWN) // TODO: SDL doesn't seem to pick it up..
-      REQUIRE(level == SDL_JOYSTICK_POWER_MEDIUM);
+    // SDL doesn't seem to pick it up..
+    //    auto joy = SDL_GameControllerGetJoystick(gc);
+    //    auto level = SDL_JoystickCurrentPowerLevel(joy);
+    //    REQUIRE(level == SDL_JOYSTICK_POWER_MEDIUM);
+
+    auto base_path =
+        std::filesystem::path(
+            joypad.get_sys_nodes()[0]) // "/sys/devices/virtual/misc/uhid/0003:054C:0CE6.0017/input/input123"
+            .parent_path()             // "/sys/devices/virtual/misc/uhid/0003:054C:0CE6.0017/input/"
+            .parent_path()             // "/sys/devices/virtual/misc/uhid/0003:054C:0CE6.0017/"
+        / "power_supply"               // "/sys/devices/virtual/misc/uhid/0003:054C:0CE6.0017/power_supply"
+        / ("ps-controller-battery-" + joypad.get_mac_address());
+    REQUIRE(std::filesystem::exists(base_path));
+
+    { // Defaults to full if nothing is set
+      auto [capacity, status] = get_system_battery(base_path);
+      REQUIRE(capacity == 100);
+      REQUIRE(status == "Full");
+    }
+
+    {
+      joypad.set_battery(inputtino::PS5Joypad::BATTERY_CHARGHING, 80);
+      auto [capacity, status] = get_system_battery(base_path);
+      REQUIRE(capacity == 85);
+      REQUIRE(status == "Charging");
+    }
+
+    {
+      joypad.set_battery(inputtino::PS5Joypad::BATTERY_CHARGHING, 10);
+      auto [capacity, status] = get_system_battery(base_path);
+      REQUIRE(capacity == 15);
+      REQUIRE(status == "Charging");
+    }
+
+    {
+      joypad.set_battery(inputtino::PS5Joypad::BATTERY_DISCHARGING, 75);
+      auto [capacity, status] = get_system_battery(base_path);
+      REQUIRE(capacity == 75);
+      REQUIRE(status == "Discharging");
+    }
+
+    {
+      joypad.set_battery(inputtino::PS5Joypad::BATTERY_FULL, 100);
+      auto [capacity, status] = get_system_battery(base_path);
+      REQUIRE(capacity == 100);
+      REQUIRE(status == "Full");
+    }
   }
 
   // Adaptive triggers aren't supported by SDL

@@ -386,6 +386,10 @@ public:
 
   std::vector<std::string> get_nodes() const override;
 
+  std::string get_mac_address() const;
+
+  std::vector<std::string> get_sys_nodes() const;
+
   void set_pressed_buttons(int newly_pressed) override;
   void set_triggers(int16_t left, int16_t right) override;
   void set_stick(STICK_POSITION stick_type, short x, short y) override;
@@ -426,8 +430,6 @@ public:
 protected:
   typedef struct PS5JoypadState PS5JoypadState;
   std::shared_ptr<PS5JoypadState> _state;
-  std::string get_mac_address() const;
-  std::vector<std::string> get_sys_nodes() const;
 
 private:
   PS5Joypad(uint16_t vendor_id);
