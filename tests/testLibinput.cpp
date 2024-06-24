@@ -153,6 +153,19 @@ TEST_CASE("virtual mouse absolue", "[LIBINPUT]") {
         REQUIRE_THAT(libinput_event_pointer_get_absolute_x_transformed(p_event, TARGET_WIDTH),
                      WithinRel(TARGET_WIDTH, 0.5f));
     }
+
+    {// Testing non 16:9 aspect ratio (PR-9)
+      TARGET_WIDTH = 19200;
+      TARGET_HEIGHT = 10800;
+      mouse.move_abs(TARGET_WIDTH, TARGET_HEIGHT, TARGET_WIDTH, TARGET_HEIGHT);
+      event = get_event(li);
+      REQUIRE(libinput_event_get_type(event.get()) == LIBINPUT_EVENT_POINTER_MOTION_ABSOLUTE);
+      auto p_event = libinput_event_get_pointer_event(event.get());
+      REQUIRE_THAT(libinput_event_pointer_get_absolute_y_transformed(p_event, TARGET_HEIGHT),
+                   WithinRel(TARGET_HEIGHT, 0.001f));
+      REQUIRE_THAT(libinput_event_pointer_get_absolute_x_transformed(p_event, TARGET_WIDTH),
+                   WithinRel(TARGET_WIDTH, 0.001f));
+    }
 }
 
 TEST_CASE("virtual touch screen", "[LIBINPUT]") {
