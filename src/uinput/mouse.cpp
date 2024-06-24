@@ -133,8 +133,8 @@ void Mouse::move(int delta_x, int delta_y) {
 }
 
 void Mouse::move_abs(int x, int y, int screen_width, int screen_height) {
-  int scaled_x = (int)std::lround((ABS_MAX_WIDTH / screen_width) * x);
-  int scaled_y = (int)std::lround((ABS_MAX_HEIGHT / screen_height) * y);
+  int scaled_x = (int)std::lround((ABS_MAX_WIDTH / (double)screen_width) * x);
+  int scaled_y = (int)std::lround((ABS_MAX_HEIGHT / (double)screen_height) * y);
 
   if (auto mouse = _state->mouse_abs.get()) {
     libevdev_uinput_write_event(mouse, EV_ABS, ABS_X, scaled_x);
