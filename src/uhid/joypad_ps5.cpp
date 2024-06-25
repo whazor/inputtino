@@ -252,7 +252,7 @@ std::vector<std::string> PS5Joypad::get_nodes() const {
   return nodes;
 }
 
-void PS5Joypad::set_pressed_buttons(int pressed) {
+void PS5Joypad::set_pressed_buttons(unsigned int pressed) {
   { // First reset everything to non-pressed
     this->_state->current_state.buttons[0] = 0;
     this->_state->current_state.buttons[1] = 0;

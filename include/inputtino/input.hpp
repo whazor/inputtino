@@ -267,7 +267,7 @@ private:
  */
 class Joypad : public VirtualDevice {
 public:
-  enum CONTROLLER_BTN : int {
+  enum CONTROLLER_BTN : unsigned int {
     DPAD_UP = 0x0001,
     DPAD_DOWN = 0x0002,
     DPAD_LEFT = 0x0004,
@@ -310,7 +310,7 @@ public:
    *
    * Example: previous state had `DPAD_UP` and `A` -> user release `A` -> new state only has `DPAD_UP`
    */
-  virtual void set_pressed_buttons(int newly_pressed) = 0;
+  virtual void set_pressed_buttons(unsigned int newly_pressed) = 0;
 
   virtual void set_triggers(int16_t left, int16_t right) = 0;
 
@@ -333,7 +333,7 @@ public:
 
   std::vector<std::string> get_nodes() const override;
 
-  void set_pressed_buttons(int newly_pressed) override;
+  void set_pressed_buttons(unsigned int newly_pressed) override;
   void set_triggers(int16_t left, int16_t right) override;
   void set_stick(STICK_POSITION stick_type, short x, short y) override;
   void set_on_rumble(const std::function<void(int low_freq, int high_freq)> &callback);
@@ -361,7 +361,7 @@ public:
 
   std::vector<std::string> get_nodes() const override;
 
-  void set_pressed_buttons(int newly_pressed) override;
+  void set_pressed_buttons(unsigned int newly_pressed) override;
   void set_triggers(int16_t left, int16_t right) override;
   void set_stick(STICK_POSITION stick_type, short x, short y) override;
   void set_on_rumble(const std::function<void(int low_freq, int high_freq)> &callback);
@@ -390,7 +390,7 @@ public:
 
   std::vector<std::string> get_sys_nodes() const;
 
-  void set_pressed_buttons(int newly_pressed) override;
+  void set_pressed_buttons(unsigned int newly_pressed) override;
   void set_triggers(int16_t left, int16_t right) override;
   void set_stick(STICK_POSITION stick_type, short x, short y) override;
   void set_on_rumble(const std::function<void(int low_freq, int high_freq)> &callback);

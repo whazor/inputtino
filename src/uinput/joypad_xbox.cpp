@@ -102,7 +102,7 @@ Result<XboxOneJoypad> XboxOneJoypad::create(const DeviceDefinition &device) {
   return joypad;
 }
 
-void XboxOneJoypad::set_pressed_buttons(int newly_pressed) {
+void XboxOneJoypad::set_pressed_buttons(unsigned int newly_pressed) {
   // Button flags that have been changed between current and prev
   auto bf_changed = newly_pressed ^ this->_state->currently_pressed_btns;
   // Button flags that are only part of the new packet

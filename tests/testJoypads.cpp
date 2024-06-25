@@ -28,6 +28,23 @@ void flush_sdl_events() {
     case SDL_CONTROLLERDEVICEREMAPPED:
       std::cout << "SDL_CONTROLLERDEVICEREMAPPED " << SDL_GameControllerNameForIndex(event.cdevice.which) << std::endl;
       break;
+    case SDL_CONTROLLERBUTTONDOWN:
+    case SDL_CONTROLLERBUTTONUP:
+    case SDL_JOYBUTTONDOWN:
+    case SDL_JOYBUTTONUP:
+      std::cout << "SDL button - " << (event.cbutton.state == SDL_PRESSED ? "pressed " : "released ")
+                << (int)event.cbutton.button << std::endl;
+      break;
+    case SDL_JOYAXISMOTION:
+    case SDL_CONTROLLERAXISMOTION:
+      std::cout << "SDL axis - " << (int)event.jaxis.axis << " " << event.jaxis.value << std::endl;
+      break;
+    case SDL_JOYHATMOTION:
+      std::cout << "SDL_JOYHATMOTION " << (int)event.jhat.value << std::endl;
+      break;
+    default:
+      std::cout << "SDL event: " << event.type << "\n";
+      break;
     }
   }
 }
@@ -35,7 +52,10 @@ void flush_sdl_events() {
 class SDLTestsFixture {
 public:
   SDLTestsFixture() {
-    SDL_Init(SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMECONTROLLER | SDL_INIT_SENSOR);
+    if (SDL_Init(SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMECONTROLLER | SDL_INIT_SENSOR | SDL_INIT_EVENTS) <
+        0) {
+      std::cerr << "SDL could not initialize! SDL_Error: " << SDL_GetError() << std::endl;
+    }
     SDL_LogSetAllPriority(SDL_LOG_PRIORITY_VERBOSE);
     SDL_GameControllerEventState(SDL_ENABLE);
   }
@@ -52,24 +72,24 @@ public:
   REQUIRE(SDL_GameControllerGetButton(gc, SDL_BTN) == 1);
 
 void test_buttons(SDL_GameController *gc, Joypad &joypad) {
-  SDL_TEST_BUTTON(Joypad::DPAD_UP, SDL_CONTROLLER_BUTTON_DPAD_UP);
-  SDL_TEST_BUTTON(Joypad::DPAD_DOWN, SDL_CONTROLLER_BUTTON_DPAD_DOWN);
-  SDL_TEST_BUTTON(Joypad::DPAD_LEFT, SDL_CONTROLLER_BUTTON_DPAD_LEFT);
-  SDL_TEST_BUTTON(Joypad::DPAD_RIGHT, SDL_CONTROLLER_BUTTON_DPAD_RIGHT);
+  SDL_TEST_BUTTON(Joypad::DPAD_UP, SDL_CONTROLLER_BUTTON_DPAD_UP)
+  SDL_TEST_BUTTON(Joypad::DPAD_DOWN, SDL_CONTROLLER_BUTTON_DPAD_DOWN)
+  SDL_TEST_BUTTON(Joypad::DPAD_LEFT, SDL_CONTROLLER_BUTTON_DPAD_LEFT)
+  SDL_TEST_BUTTON(Joypad::DPAD_RIGHT, SDL_CONTROLLER_BUTTON_DPAD_RIGHT)
 
-  SDL_TEST_BUTTON(Joypad::LEFT_STICK, SDL_CONTROLLER_BUTTON_LEFTSTICK);
-  SDL_TEST_BUTTON(Joypad::RIGHT_STICK, SDL_CONTROLLER_BUTTON_RIGHTSTICK);
-  SDL_TEST_BUTTON(Joypad::LEFT_BUTTON, SDL_CONTROLLER_BUTTON_LEFTSHOULDER);
-  SDL_TEST_BUTTON(Joypad::RIGHT_BUTTON, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER);
+  SDL_TEST_BUTTON(Joypad::LEFT_STICK, SDL_CONTROLLER_BUTTON_LEFTSTICK)
+  SDL_TEST_BUTTON(Joypad::RIGHT_STICK, SDL_CONTROLLER_BUTTON_RIGHTSTICK)
+  SDL_TEST_BUTTON(Joypad::LEFT_BUTTON, SDL_CONTROLLER_BUTTON_LEFTSHOULDER)
+  SDL_TEST_BUTTON(Joypad::RIGHT_BUTTON, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)
 
-  SDL_TEST_BUTTON(Joypad::A, SDL_CONTROLLER_BUTTON_A);
-  SDL_TEST_BUTTON(Joypad::B, SDL_CONTROLLER_BUTTON_B);
-  SDL_TEST_BUTTON(Joypad::X, SDL_CONTROLLER_BUTTON_X);
-  SDL_TEST_BUTTON(Joypad::Y, SDL_CONTROLLER_BUTTON_Y);
+  SDL_TEST_BUTTON(Joypad::A, SDL_CONTROLLER_BUTTON_A)
+  SDL_TEST_BUTTON(Joypad::B, SDL_CONTROLLER_BUTTON_B)
+  SDL_TEST_BUTTON(Joypad::X, SDL_CONTROLLER_BUTTON_X)
+  SDL_TEST_BUTTON(Joypad::Y, SDL_CONTROLLER_BUTTON_Y)
 
-  SDL_TEST_BUTTON(Joypad::START, SDL_CONTROLLER_BUTTON_START);
-  SDL_TEST_BUTTON(Joypad::BACK, SDL_CONTROLLER_BUTTON_BACK);
-  SDL_TEST_BUTTON(Joypad::HOME, SDL_CONTROLLER_BUTTON_GUIDE);
+  SDL_TEST_BUTTON(Joypad::START, SDL_CONTROLLER_BUTTON_START)
+  SDL_TEST_BUTTON(Joypad::BACK, SDL_CONTROLLER_BUTTON_BACK)
+  SDL_TEST_BUTTON(Joypad::HOME, SDL_CONTROLLER_BUTTON_GUIDE)
 
   // Release all buttons
   joypad.set_pressed_buttons(0);
@@ -172,8 +192,8 @@ TEST_CASE_METHOD(SDLTestsFixture, "PS Joypad", "[SDL]") {
     //        REQUIRE(led_data->b == 150);
   }
 
-  test_buttons(gc, joypad); // TODO: fix failing buttons
-  {                         // Sticks
+  test_buttons(gc, joypad);
+  { // Sticks
     REQUIRE(SDL_GameControllerHasAxis(gc, SDL_CONTROLLER_AXIS_LEFTX));
     REQUIRE(SDL_GameControllerHasAxis(gc, SDL_CONTROLLER_AXIS_LEFTY));
     REQUIRE(SDL_GameControllerHasAxis(gc, SDL_CONTROLLER_AXIS_RIGHTX));
