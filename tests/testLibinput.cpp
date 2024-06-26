@@ -312,6 +312,20 @@ TEST_CASE("virtual pen tablet", "[LIBINPUT]") {
         REQUIRE(libinput_event_tablet_tool_get_tip_state(t_event) == LIBINPUT_TABLET_TOOL_TIP_DOWN);
     }
 
+    { // Try removing the pen by setting the distance to 1.0
+      tablet.place_tool(PenTablet::PEN, 0.1, 0.2, -1, 1.0, 45, 25);
+      event = get_event(li);
+      std::cout << libinput_event_get_type(event.get()) << std::endl;
+      REQUIRE(libinput_event_get_type(event.get()) == LIBINPUT_EVENT_TABLET_TOOL_TIP);
+      auto t_event = libinput_event_get_tablet_tool_event(event.get());
+      REQUIRE(libinput_event_tablet_tool_get_proximity_state(t_event) == LIBINPUT_TABLET_TOOL_PROXIMITY_STATE_IN);
+      REQUIRE(libinput_tablet_tool_get_type(libinput_event_tablet_tool_get_tool(t_event)) ==
+              LIBINPUT_TABLET_TOOL_TYPE_PEN);
+      REQUIRE(libinput_event_tablet_tool_get_distance(t_event) == 1.0);
+      REQUIRE(libinput_event_tablet_tool_get_pressure(t_event) == 0.0);
+      REQUIRE(libinput_event_tablet_tool_get_tip_state(t_event) == LIBINPUT_TABLET_TOOL_TIP_UP);
+    }
+
     { // Test out pressing a button on the tool
         tablet.set_btn(PenTablet::PRIMARY, true);
         event = get_event(li);

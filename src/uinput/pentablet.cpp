@@ -129,11 +129,15 @@ void PenTablet::place_tool(
     if (pressure >= 0) {
       int scaled_pressure = (int)std::lround(pressure * PRESSURE_MAX);
       libevdev_uinput_write_event(tablet, EV_ABS, ABS_PRESSURE, scaled_pressure);
+      // when there's pressure, the tool must be touching the tablet
+      libevdev_uinput_write_event(tablet, EV_ABS, ABS_DISTANCE, 0);
     }
 
     if (distance >= 0) {
       int scaled_distance = (int)std::lround(distance * DISTANCE_MAX);
       libevdev_uinput_write_event(tablet, EV_ABS, ABS_DISTANCE, scaled_distance);
+      // when there's distance, the tool can't be touching the tablet
+      libevdev_uinput_write_event(tablet, EV_ABS, ABS_PRESSURE, 0);
     }
 
     auto scaled_tilt_x = std::clamp(tilt_x, -90.0f, 90.0f);
