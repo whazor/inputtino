@@ -23,8 +23,8 @@ struct DeviceDefinition {
   uint16_t product_id;
   uint16_t version;
 
-  std::string device_phys = "00:11:22:33:44:55";
-  std::string device_uniq = "00:11:22:33:44:55";
+  std::string device_phys = "";
+  std::string device_uniq = "";
 };
 
 /**

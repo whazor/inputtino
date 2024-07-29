@@ -117,10 +117,10 @@ static void on_uhid_event(std::shared_ptr<PS5JoypadState> state, uhid_event ev, 
 }
 
 void generate_mac_address(PS5JoypadState *state) {
-  std::default_random_engine generator;
-  std::uniform_int_distribution<unsigned char> distribution(0, 0xFF);
+  auto rand = std::bind(std::uniform_int_distribution<unsigned char>{0, 0xFF},
+                        std::default_random_engine{std::random_device()()});
   for (int i = 0; i < 6; i++) {
-    state->mac_address[i] = distribution(generator);
+    state->mac_address[i] = rand();
   }
 }
 
@@ -155,6 +155,14 @@ Result<PS5Joypad> PS5Joypad::create(const DeviceDefinition &device) {
       .report_description = {&uhid::ps5_rdesc[0], &uhid::ps5_rdesc[0] + sizeof(uhid::ps5_rdesc)}};
 
   auto joypad = PS5Joypad(device.vendor_id);
+
+  if (def.phys.empty()) {
+    def.phys = joypad.get_mac_address();
+  }
+  if (def.uniq.empty()) {
+    def.uniq = joypad.get_mac_address();
+  }
+
   auto dev =
       uhid::Device::create(def, [state = joypad._state](uhid_event ev, int fd) { on_uhid_event(state, ev, fd); });
   if (dev) {

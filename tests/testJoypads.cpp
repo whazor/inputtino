@@ -151,6 +151,22 @@ TEST_CASE_METHOD(SDLTestsFixture, "PS Joypad", "[SDL]") {
   }
   REQUIRE(gc);
 
+  { // Test creating a second device
+    REQUIRE(SDL_NumJoysticks() == 1);
+    auto joypad2 = std::move(*PS5Joypad::create());
+    std::this_thread::sleep_for(250ms);
+
+    auto devices2 = joypad2.get_nodes();
+    REQUIRE_THAT(devices2, SizeIs(5)); // 3 eventXX and 2 jsYY
+    REQUIRE_THAT(devices2, Contains(ContainsSubstring("/dev/input/event")));
+    REQUIRE_THAT(devices2, Contains(ContainsSubstring("/dev/input/js")));
+
+    flush_sdl_events();
+    REQUIRE(SDL_NumJoysticks() == 2);
+    SDL_GameController *gc2 = SDL_GameControllerOpen(1);
+    REQUIRE(SDL_GameControllerGetType(gc2) == SDL_CONTROLLER_TYPE_PS5);
+  }
+
   REQUIRE(SDL_GameControllerGetType(gc) == SDL_CONTROLLER_TYPE_PS5);
   { // Rumble
     // Checking for basic capability
