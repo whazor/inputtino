@@ -1,9 +1,9 @@
-#include "keyboard.hpp"
 #include "inputtino/input.hpp"
 
 #include <algorithm>
 #include <cstring>
 #include <inputtino/protected_types.hpp>
+#include <inputtino/keyboard.hpp>
 #include <thread>
 
 namespace inputtino {

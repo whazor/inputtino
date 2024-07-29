@@ -112,7 +112,6 @@ if (UNIX AND NOT APPLE)
     file(GLOB SRC_LIST SRCS src/uinput/*.cpp)
     target_sources(libinputtino PRIVATE
             ${SRC_LIST}
-            "src/uinput/keyboard.hpp"
             "src/uinput/joypad_utils.hpp"
             "src/uhid/joypad_ps5.cpp")
     target_include_directories(libinputtino PUBLIC "src/uinput/include" "src/uhid/include/")
