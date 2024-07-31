@@ -114,7 +114,7 @@ Result<Mouse> Mouse::create(const DeviceDefinition &device) {
     return Error(mouse_rel_or_error.getErrorMessage());
   }
 
-  auto mouse_abs_or_error = create_mouse_abs();
+  auto mouse_abs_or_error = create_mouse_abs(device);
   if (mouse_abs_or_error) {
     mouse._state->mouse_abs = std::move(*mouse_abs_or_error);
   } else {
