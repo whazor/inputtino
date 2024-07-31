@@ -63,14 +63,14 @@ static Result<libevdev_uinput_ptr> create_mouse(const DeviceDefinition &device) 
   return libevdev_uinput_ptr{uidev, ::libevdev_uinput_destroy};
 }
 
-static Result<libevdev_uinput_ptr> create_mouse_abs() {
+static Result<libevdev_uinput_ptr> create_mouse_abs(const DeviceDefinition &device) {
   libevdev *dev = libevdev_new();
   libevdev_uinput *uidev;
 
-  libevdev_set_name(dev, "Wolf mouse (abs) virtual device");
-  libevdev_set_id_vendor(dev, 0xAB00);
-  libevdev_set_id_product(dev, 0xAB02);
-  libevdev_set_id_version(dev, 0xAB00);
+  libevdev_set_name(dev, (device.name + " (absolute)").c_str());
+  libevdev_set_id_vendor(dev, device.vendor_id);
+  libevdev_set_id_product(dev, device.product_id);
+  libevdev_set_id_version(dev, device.version);
   libevdev_set_id_bustype(dev, BUS_USB);
 
   libevdev_enable_property(dev, INPUT_PROP_DIRECT);
