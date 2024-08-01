@@ -1,5 +1,10 @@
+#[allow(dead_code)]
 pub struct InputtinoDeviceDefinition {
     pub def: super::InputtinoDeviceDefinition,
+    // Keep those around since we are passing them as pointers
+    name: std::ffi::CString,
+    phys: std::ffi::CString,
+    uniq: std::ffi::CString,
 }
 
 impl InputtinoDeviceDefinition {
@@ -15,7 +20,7 @@ impl InputtinoDeviceDefinition {
             device_phys: phys.as_ptr(), // TODO: optional, if not present random MAC address
             device_uniq: uniq.as_ptr(),
         };
-        InputtinoDeviceDefinition { def }
+        InputtinoDeviceDefinition { def, name, phys, uniq }
     }
 }
 

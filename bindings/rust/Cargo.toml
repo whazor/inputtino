@@ -13,3 +13,8 @@ path = "src/lib.rs"
 [build-dependencies]
 bindgen = "0.69.4"
 cmake = "0.1"
+
+[dev-dependencies]
+input = "0.9.0"
+rustix = { version = "0.38.18", features = ["fs"] }
+approx = "0.5.1"
