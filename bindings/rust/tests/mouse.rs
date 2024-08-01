@@ -1,42 +1,17 @@
 #[macro_use]
 extern crate approx;
 
-use input::{Event, Libinput, LibinputInterface};
-use rustix::{
-    fs::{open, OFlags, Mode}
-};
-use std::os::unix::{io::OwnedFd};
-use std::path::Path;
-use input::event::{DeviceEvent, PointerEvent};
-use input::event::pointer::{Axis, ButtonState};
 use inputtino_rs::{
     INPUTTINO_MOUSE_BUTTON,
     mouse::InputtinoMouse,
     common::InputtinoDeviceDefinition,
 };
+use input::{Event, Libinput};
+use input::event::{DeviceEvent, PointerEvent};
+use input::event::pointer::{Axis, ButtonState};
 
-struct NixInterface;
-
-impl LibinputInterface for NixInterface {
-    fn open_restricted(&mut self, path: &Path, flags: i32) -> Result<OwnedFd, i32> {
-        open(path, OFlags::from_bits_truncate(flags as u32), Mode::empty())
-            .map_err(|err| err.raw_os_error())
-    }
-    fn close_restricted(&mut self, fd: OwnedFd) {
-        let _ = fd;
-    }
-}
-
-fn wait_next_event(input: &mut Libinput) -> Option<Event> {
-    for _ in 0..10 { // loop maximum 10 times to avoid infinite loop
-        input.dispatch().unwrap();
-        if let Some(event) = input.next() {
-            return Some(event);
-        }
-        std::thread::sleep(std::time::Duration::from_millis(50));
-    }
-    return None;
-}
+mod common;
+use crate::common::{NixInterface, SyncEvent};
 
 #[test]
 fn test_inputtino_mouse() {
@@ -70,7 +45,7 @@ fn test_inputtino_mouse() {
     { // Test mouse relative motion
         mouse.move_rel(10, 20);
 
-        let ev = wait_next_event(&mut input).unwrap();
+        let ev = input.wait_next_event().unwrap();
         assert!(matches!(ev, Event::Pointer(PointerEvent::Motion(_))));
         match ev {
             Event::Pointer(PointerEvent::Motion(ev)) => {
@@ -84,7 +59,7 @@ fn test_inputtino_mouse() {
     { // Test mouse absolute motion
         mouse.move_abs(100, 200, 1920, 1080);
 
-        let ev = wait_next_event(&mut input).unwrap();
+        let ev = input.wait_next_event().unwrap();
         assert!(matches!(ev, Event::Pointer(PointerEvent::MotionAbsolute(_))));
         match ev {
             Event::Pointer(PointerEvent::MotionAbsolute(ev)) => {
@@ -98,7 +73,7 @@ fn test_inputtino_mouse() {
     { // Test mouse button press
         mouse.press_button(INPUTTINO_MOUSE_BUTTON::LEFT);
 
-        let ev = wait_next_event(&mut input).unwrap();
+        let ev = input.wait_next_event().unwrap();
         assert!(matches!(ev, Event::Pointer(PointerEvent::Button(_))));
         match ev {
             Event::Pointer(PointerEvent::Button(ev)) => {
@@ -112,7 +87,7 @@ fn test_inputtino_mouse() {
     {
         mouse.release_button(INPUTTINO_MOUSE_BUTTON::LEFT);
 
-        let ev = wait_next_event(&mut input).unwrap();
+        let ev = input.wait_next_event().unwrap();
         assert!(matches!(ev, Event::Pointer(PointerEvent::Button(_))));
         match ev {
             Event::Pointer(PointerEvent::Button(ev)) => {
@@ -126,7 +101,7 @@ fn test_inputtino_mouse() {
     {
         mouse.scroll_vertical(100);
 
-        let ev = wait_next_event(&mut input).unwrap();
+        let ev = input.wait_next_event().unwrap();
         assert!(matches!(ev, Event::Pointer(PointerEvent::ScrollWheel(_))));
         match ev {
             Event::Pointer(PointerEvent::ScrollWheel(ev)) => {
@@ -139,7 +114,7 @@ fn test_inputtino_mouse() {
     {
         mouse.scroll_horizontal(100);
 
-        let ev = wait_next_event(&mut input).unwrap();
+        let ev = input.wait_next_event().unwrap();
         assert!(matches!(ev, Event::Pointer(PointerEvent::ScrollWheel(_))));
         match ev {
             Event::Pointer(PointerEvent::ScrollWheel(ev)) => {

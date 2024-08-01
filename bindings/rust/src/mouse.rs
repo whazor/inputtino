@@ -1,5 +1,4 @@
-use std::ffi::{CString};
-use crate::{inputtino_mouse_create, inputtino_mouse_destroy, inputtino_mouse_get_nodes, inputtino_mouse_move, inputtino_mouse_move_absolute, inputtino_mouse_press_button, inputtino_mouse_release_button, inputtino_mouse_scroll_horizontal, inputtino_mouse_scroll_vertical};
+use crate::{get_nodes, inputtino_mouse_create, inputtino_mouse_destroy, inputtino_mouse_get_nodes, inputtino_mouse_move, inputtino_mouse_move_absolute, inputtino_mouse_press_button, inputtino_mouse_release_button, inputtino_mouse_scroll_horizontal, inputtino_mouse_scroll_vertical, make_device};
 use crate::common::{InputtinoDeviceDefinition, error_handler_fn};
 
 pub struct InputtinoMouse {
@@ -8,36 +7,18 @@ pub struct InputtinoMouse {
 
 impl InputtinoMouse {
     pub fn new(device: &InputtinoDeviceDefinition) -> Result<Self, String> {
-        let error_str = std::ptr::null_mut();
-        let error_handler = super::InputtinoErrorHandler {
-            eh: Some(error_handler_fn),
-            user_data: error_str,
-        };
         unsafe {
-            let mouse = inputtino_mouse_create(&device.def, &error_handler);
-            if mouse.is_null() { // TODO: test this
-                let error_msg = (error_str as *mut std::ffi::CString).as_ref().unwrap().to_str().unwrap();
-                Err("Failed to create Mouse: ".to_string() + error_msg)
-            } else {
-                Ok(InputtinoMouse { mouse })
+            let dev = make_device!(inputtino_mouse_create, device);
+            match dev {
+                Ok(mouse) => Ok(InputtinoMouse { mouse }),
+                Err(e) => Err(e),
             }
         }
     }
 
     pub fn get_nodes(&self) -> Result<Vec<String>, String> {
         unsafe {
-            let mut nodes_count: core::ffi::c_int = 0;
-            let nodes = inputtino_mouse_get_nodes(self.mouse, &mut nodes_count);
-            if nodes.is_null() {
-                return Err("Failed to get nodes".to_string());
-            }
-
-            let mut result = Vec::new();
-            for i in 0..nodes_count {
-                let node = CString::from_raw(*nodes.offset(i as isize));
-                result.push(node.to_str().unwrap().to_string());
-            }
-            Ok(result)
+            get_nodes!(inputtino_mouse_get_nodes, self.mouse)
         }
     }
 

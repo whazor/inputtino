@@ -6,3 +6,4 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 pub mod common;
 pub mod mouse;
+pub mod keyboard;
