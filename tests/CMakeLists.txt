@@ -1,3 +1,5 @@
+include(FetchContent)
+
 # Testing library
 FetchContent_Declare(
         Catch2

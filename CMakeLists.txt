@@ -163,6 +163,13 @@ if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
         install(FILES "${CMAKE_CURRENT_BINARY_DIR}/include/inputtino/${export_file_name}"
                 COMPONENT libinputtino-dev
                 DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/inputtino")
+        configure_file(
+                ${CMAKE_CURRENT_SOURCE_DIR}/share/pkgconfig/libinputtino.pc.in
+                ${CMAKE_CURRENT_BINARY_DIR}/libinputtino.pc
+                @ONLY
+        )
+        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libinputtino.pc
+                DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/pkgconfig)
     endif ()
 endif ()
 
