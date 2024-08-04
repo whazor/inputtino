@@ -1,8 +1,9 @@
 use crate::common::{error_handler_fn, InputtinoDeviceDefinition};
-use crate::{get_nodes, inputtino_keyboard_create, inputtino_keyboard_get_nodes, make_device};
+use crate::{get_nodes, make_device};
+use crate::c_bindings::{inputtino_keyboard_create, inputtino_keyboard_get_nodes, inputtino_keyboard_press, inputtino_keyboard_release, inputtino_keyboard_destroy};
 
 pub struct InputtinoKeyboard {
-    kb: *mut super::InputtinoKeyboard,
+    kb: *mut crate::c_bindings::InputtinoKeyboard,
 }
 
 impl InputtinoKeyboard {
@@ -24,13 +25,13 @@ impl InputtinoKeyboard {
 
     pub fn press_key(&self, key: i16) {
         unsafe {
-            super::inputtino_keyboard_press(self.kb, key);
+            inputtino_keyboard_press(self.kb, key);
         }
     }
 
     pub fn release_key(&self, key: i16) {
         unsafe {
-            super::inputtino_keyboard_release(self.kb, key);
+            inputtino_keyboard_release(self.kb, key);
         }
     }
 }
@@ -38,7 +39,7 @@ impl InputtinoKeyboard {
 impl Drop for InputtinoKeyboard {
     fn drop(&mut self) {
         unsafe {
-            super::inputtino_keyboard_destroy(self.kb);
+            inputtino_keyboard_destroy(self.kb);
         }
     }
 }

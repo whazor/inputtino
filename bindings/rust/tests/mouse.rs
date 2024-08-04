@@ -2,8 +2,7 @@
 extern crate approx;
 
 use inputtino_rs::{
-    INPUTTINO_MOUSE_BUTTON,
-    mouse::InputtinoMouse,
+    mouse::{InputtinoMouse, INPUTTINO_MOUSE_BUTTON},
     common::InputtinoDeviceDefinition,
 };
 use input::{Event, Libinput};

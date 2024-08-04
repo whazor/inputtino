@@ -1,8 +1,11 @@
-use crate::{get_nodes, inputtino_mouse_create, inputtino_mouse_destroy, inputtino_mouse_get_nodes, inputtino_mouse_move, inputtino_mouse_move_absolute, inputtino_mouse_press_button, inputtino_mouse_release_button, inputtino_mouse_scroll_horizontal, inputtino_mouse_scroll_vertical, make_device};
+use crate::{get_nodes, make_device};
 use crate::common::{InputtinoDeviceDefinition, error_handler_fn};
+use crate::c_bindings::{inputtino_mouse_create, inputtino_mouse_destroy, inputtino_mouse_get_nodes, inputtino_mouse_move, inputtino_mouse_move_absolute, inputtino_mouse_press_button, inputtino_mouse_release_button, inputtino_mouse_scroll_horizontal, inputtino_mouse_scroll_vertical};
+
+pub use crate::c_bindings::{INPUTTINO_MOUSE_BUTTON};
 
 pub struct InputtinoMouse {
-    mouse: *mut super::InputtinoMouse,
+    mouse: *mut crate::c_bindings::InputtinoMouse,
 }
 
 impl InputtinoMouse {
@@ -34,13 +37,13 @@ impl InputtinoMouse {
         }
     }
 
-    pub fn press_button(&self, button: super::INPUTTINO_MOUSE_BUTTON) {
+    pub fn press_button(&self, button: INPUTTINO_MOUSE_BUTTON) {
         unsafe {
             inputtino_mouse_press_button(self.mouse, button);
         }
     }
 
-    pub fn release_button(&self, button: super::INPUTTINO_MOUSE_BUTTON) {
+    pub fn release_button(&self, button: INPUTTINO_MOUSE_BUTTON) {
         unsafe {
             inputtino_mouse_release_button(self.mouse, button);
         }
@@ -77,7 +80,7 @@ mod tests {
         let device_name = CString::new("Rusty Mouse").unwrap();
         let device_phys = CString::new("Rusty Mouse Phys").unwrap();
         let device_uniq = CString::new("Rusty Mouse Uniq").unwrap();
-        let def = crate::InputtinoDeviceDefinition {
+        let def = crate::c_bindings::InputtinoDeviceDefinition {
             name: device_name.as_ptr(),
             vendor_id: 0,
             product_id: 0,
@@ -87,7 +90,7 @@ mod tests {
         };
         // TODO: test this somehow
         let error_str = std::ptr::null_mut();
-        let error_handler = crate::InputtinoErrorHandler {
+        let error_handler = crate::c_bindings::InputtinoErrorHandler {
             eh: Some(error_handler_fn),
             user_data: error_str,
         };
