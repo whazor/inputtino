@@ -21,9 +21,9 @@ static const std::map<int, int> btn_to_linux = {
     {PenTablet::TERTIARY, BTN_STYLUS3},
 };
 
-static constexpr int MAX_X = 1920;
-static constexpr int MAX_Y = 1080;
-static constexpr int PRESSURE_MAX = 253;
+static constexpr int MAX_X = 19200;
+static constexpr int MAX_Y = 10800;
+static constexpr int PRESSURE_MAX = 4096;
 static constexpr int DISTANCE_MAX = 1024;
 static constexpr int RESOLUTION = 28;
 
