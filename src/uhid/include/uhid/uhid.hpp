@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <functional>
 #include <inputtino/result.hpp>
+#include <iostream>
 #include <linux/uhid.h>
 #include <memory>
 #include <poll.h>
@@ -50,7 +51,7 @@ static inputtino::Result<bool> uhid_write(int fd, const struct uhid_event *ev) {
 class Device {
 private:
   Device(std::shared_ptr<std::thread> ev_thread, std::shared_ptr<ThreadState> state)
-      : ev_thread(std::move(ev_thread)), state(std::move(state)){};
+      : ev_thread(std::move(ev_thread)), state(std::move(state)) {};
   std::shared_ptr<std::thread> ev_thread;
   std::shared_ptr<ThreadState> state;
   std::shared_ptr<std::function<void(const uhid_event &ev, int fd)>> on_event;
@@ -81,7 +82,7 @@ public:
 
   ~Device() {
     if (state) {
-      struct uhid_event ev {};
+      struct uhid_event ev{};
       ev.type = UHID_DESTROY;
       uhid_write(state->fd, &ev);
 
@@ -99,6 +100,8 @@ static void set_c_str(const std::string &str, unsigned char *c_str) {
   std::copy(str.begin(), str.end(), c_str);
   c_str[str.length()] = 0;
 }
+
+constexpr int UHID_POLL_TIMEOUT = 500; // ms
 
 inputtino::Result<Device> Device::create(const DeviceDefinition &definition,
                                          const std::function<void(const uhid_event &ev, int fd)> &on_event) {
@@ -124,30 +127,28 @@ inputtino::Result<Device> Device::create(const DeviceDefinition &definition,
     state->fd = fd;
     state->on_event = on_event;
     auto thread = std::make_shared<std::thread>([state]() {
-      ssize_t ret;
-      struct pollfd pfds[1];
-      pfds[0].fd = state->fd;
-      pfds[0].events = POLLIN;
+      std::array<pollfd, 1> pfds = {pollfd{.fd = state->fd, .events = POLLIN}};
+      int poll_rs = 0;
 
       while (!state->stop_repeat_thread) {
-        ret = poll(pfds, 1, -1);
-        if (ret < 0) {
-          fprintf(stderr, "Cannot poll for fds: %m\n");
+        poll_rs = poll(pfds.data(), pfds.size(), UHID_POLL_TIMEOUT);
+        if (poll_rs < 0) {
+          std::cerr << "Failed polling uhid fd; ret=" << strerror(errno) << std::endl;
           break;
         }
         if (pfds[0].revents & POLLHUP) {
-          fprintf(stderr, "Received HUP on uhid-cdev\n");
+          std::cerr << "HUP on uhid-cdev" << std::endl;
           break;
         }
         if (pfds[0].revents & POLLIN) {
-          struct uhid_event ev {};
-          ret = read(state->fd, &ev, sizeof(ev));
+          struct uhid_event ev{};
+          auto ret = read(state->fd, &ev, sizeof(ev));
           if (ret == 0) {
-            fprintf(stderr, "Read HUP on uhid-cdev\n");
+            std::cerr << "Read HUP on uhid-cdev" << std::endl;
           } else if (ret < 0) {
-            fprintf(stderr, "Cannot read uhid-cdev: %m\n");
+            std::cerr << "Cannot read uhid-cdev: " << strerror(errno) << std::endl;
           } else if (ret != sizeof(ev)) {
-            fprintf(stderr, "Invalid size read from uhid-dev: %zd != %zu\n", ret, sizeof(ev));
+            std::cerr << "Invalid size read from uhid-dev" << ret << " != " << sizeof(ev) << std::endl;
           } else {
             if (state->on_event) {
               state->on_event(ev, state->fd);
