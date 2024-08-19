@@ -10,13 +10,15 @@
 #include <linux/input.h>
 #include <linux/uinput.h>
 #include <optional>
+#include <poll.h>
 #include <thread>
 
 namespace inputtino {
 
 using namespace std::chrono_literals;
 
-static constexpr long MAX_GAIN = 0xFFFF;
+constexpr long MAX_GAIN = 0xFFFF;
+constexpr int RUMBLE_POLL_TIMEOUT = 500; // ms
 
 /**
  * Joypads will also have one `/dev/input/js*` device as child, we want to expose that as well
@@ -165,8 +167,15 @@ static void event_listener(const std::shared_ptr<BaseJoypadState> &state) {
   /* This can only be set globally when receiving FF_GAIN */
   unsigned int current_gain = MAX_GAIN;
 
+  std::array<pollfd, 1> pfds = {pollfd{.fd = uinput_fd, .events = POLLIN}};
+  int poll_rs = 0;
+
   while (!state->stop_listening_events) {
-    std::this_thread::sleep_for(20ms); // TODO: configurable?
+    poll_rs = poll(pfds.data(), pfds.size(), RUMBLE_POLL_TIMEOUT);
+    if (poll_rs < 0) {
+      std::cerr << "Failed polling uinput fd; ret=" << strerror(errno);
+      return;
+    }
 
     auto events = fetch_events(uinput_fd);
     for (auto ev : events) {
