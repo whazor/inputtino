@@ -10,6 +10,7 @@ fn main() {
     // Options
     let build_c_bindings = env::var("INPUTTINO_BUILD_C_BINDINGS").unwrap_or("FALSE".to_string()) == "TRUE";
     let build_static = env::var("INPUTTINO_BUILD_STATIC").unwrap_or("FALSE".to_string()) == "TRUE";
+    let libdir_path = env::var("INPUTTINO_LIBDIR_PATH").unwrap_or("../../");
 
     // The bindgen::Builder is the main entry point
     // to bindgen, and lets you build up options for
@@ -25,7 +26,7 @@ fn main() {
         .header("wrapper.hpp");
 
     if build_c_bindings {
-        let libdir_path = PathBuf::from("../../")
+        let libdir_path = PathBuf::from(libdir_path)
             // Canonicalize the path as `rustc-link-search` requires an absolute
             // path.
             .canonicalize()
